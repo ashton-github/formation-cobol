@@ -1,0 +1,8 @@
+{
+  "name": "COBOL Formation",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y gnucobol3 && chmod +x scripts/cob scripts/verifier_installation.sh workspace/projet/*.sh && echo \"export PATH=\\\"\\$PATH:$PWD/scripts\\\"\" >> ~/.bashrc",
+  "customizations": {
+    "vscode": { "extensions": ["OlegKunitsyn.gnucobol"] }
+  }
+}

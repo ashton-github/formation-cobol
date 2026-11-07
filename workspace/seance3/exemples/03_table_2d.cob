@@ -1,0 +1,45 @@
+*> ---------------------------------------------------------------
+*> Exemple 3.3 : table à DEUX dimensions (3 produits x 4 trimestres)
+*> ---------------------------------------------------------------
+IDENTIFICATION DIVISION.
+PROGRAM-ID. TABLE03.
+
+DATA DIVISION.
+WORKING-STORAGE SECTION.
+01 WS-VENTES.
+   05 WS-PRODUIT OCCURS 3 TIMES.
+      10 WS-NOM-PROD   PIC X(8).
+      10 WS-TRIM       OCCURS 4 TIMES.
+         15 WS-MONTANT PIC 9(5).
+01 WS-P            PIC 9.
+01 WS-T            PIC 9.
+01 WS-TOTAL-PROD   PIC 9(6).
+01 WS-TOTAL-GEN    PIC 9(7) VALUE 0.
+01 WS-ED           PIC Z(6)9.
+
+PROCEDURE DIVISION.
+    MOVE "STYLOS"   TO WS-NOM-PROD(1)
+    MOVE "CAHIERS"  TO WS-NOM-PROD(2)
+    MOVE "CLASSEUR" TO WS-NOM-PROD(3)
+
+    PERFORM VARYING WS-P FROM 1 BY 1 UNTIL WS-P > 3
+        PERFORM VARYING WS-T FROM 1 BY 1 UNTIL WS-T > 4
+            COMPUTE WS-MONTANT(WS-P, WS-T) = WS-P * 1000 + WS-T * 100
+        END-PERFORM
+    END-PERFORM
+
+    DISPLAY "Produit    T1     T2     T3     T4   Total"
+    PERFORM VARYING WS-P FROM 1 BY 1 UNTIL WS-P > 3
+        MOVE 0 TO WS-TOTAL-PROD
+        DISPLAY WS-NOM-PROD(WS-P) WITH NO ADVANCING
+        PERFORM VARYING WS-T FROM 1 BY 1 UNTIL WS-T > 4
+            DISPLAY " " WS-MONTANT(WS-P, WS-T) WITH NO ADVANCING
+            ADD WS-MONTANT(WS-P, WS-T) TO WS-TOTAL-PROD
+        END-PERFORM
+        MOVE WS-TOTAL-PROD TO WS-ED
+        DISPLAY " " WS-ED
+        ADD WS-TOTAL-PROD TO WS-TOTAL-GEN
+    END-PERFORM
+    MOVE WS-TOTAL-GEN TO WS-ED
+    DISPLAY "Total general : " WS-ED
+    STOP RUN.

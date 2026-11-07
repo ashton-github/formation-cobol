@@ -1,0 +1,38 @@
+*> Corrigé TP1.2 : fiche d'inscription
+IDENTIFICATION DIVISION.
+PROGRAM-ID. TP12.
+
+DATA DIVISION.
+WORKING-STORAGE SECTION.
+01 WS-NOM        PIC X(20).
+01 WS-PRENOM     PIC X(20).
+01 WS-NAISSANCE.
+   05 WS-NAIS-JJ   PIC 99.
+   05 WS-NAIS-MM   PIC 99.
+   05 WS-NAIS-AAAA PIC 9(4).
+01 WS-DATE-JOUR.
+   05 WS-JOUR-AAAA PIC 9(4).
+   05 WS-JOUR-MM   PIC 99.
+   05 WS-JOUR-JJ   PIC 99.
+01 WS-AGE        PIC 9(3).
+
+PROCEDURE DIVISION.
+    DISPLAY "Nom ? " WITH NO ADVANCING
+    ACCEPT WS-NOM
+    DISPLAY "Prenom ? " WITH NO ADVANCING
+    ACCEPT WS-PRENOM
+    DISPLAY "Date de naissance (JJMMAAAA) ? " WITH NO ADVANCING
+    ACCEPT WS-NAISSANCE
+    ACCEPT WS-DATE-JOUR FROM DATE YYYYMMDD
+
+    *> Défi : âge approximatif (différence d'années)
+    SUBTRACT WS-NAIS-AAAA FROM WS-JOUR-AAAA GIVING WS-AGE
+
+    DISPLAY "========== FICHE D'INSCRIPTION =========="
+    DISPLAY "Nom            : " FUNCTION TRIM(WS-NOM)
+    DISPLAY "Prenom         : " FUNCTION TRIM(WS-PRENOM)
+    DISPLAY "Ne(e) le       : " WS-NAIS-JJ "/" WS-NAIS-MM "/" WS-NAIS-AAAA
+    DISPLAY "Inscrit le     : " WS-JOUR-JJ "/" WS-JOUR-MM "/" WS-JOUR-AAAA
+    DISPLAY "Age (approx.)  : " WS-AGE " ans"
+    DISPLAY "========================================="
+    STOP RUN.

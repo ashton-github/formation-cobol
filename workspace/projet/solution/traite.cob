@@ -1,0 +1,222 @@
+*> ===============================================================
+*> MINI-PROJET - Programme 2 : TRAITE
+*> Applique data/transactions.dat (D = dépôt, R = retrait, V = virement)
+*> sur out/comptes.idx. Les transactions refusées sont écrites dans
+*> out/rejets.txt avec leur motif.
+*> Lancer depuis le dossier workspace/projet :  cob solution/traite.cob
+*> ===============================================================
+IDENTIFICATION DIVISION.
+PROGRAM-ID. TRAITE.
+
+ENVIRONMENT DIVISION.
+INPUT-OUTPUT SECTION.
+FILE-CONTROL.
+    SELECT F-TRN ASSIGN TO "data/transactions.dat"
+        ORGANIZATION IS LINE SEQUENTIAL
+        FILE STATUS IS WS-FS-TRN.
+    SELECT F-COMPTES ASSIGN TO "out/comptes.idx"
+        ORGANIZATION IS INDEXED
+        ACCESS MODE IS DYNAMIC
+        RECORD KEY IS CPT-NUM
+        FILE STATUS IS WS-FS-CPT.
+    SELECT F-REJETS ASSIGN TO "out/rejets.txt"
+        ORGANIZATION IS LINE SEQUENTIAL
+        FILE STATUS IS WS-FS-REJ.
+
+DATA DIVISION.
+FILE SECTION.
+FD F-TRN.
+COPY TRNREC.
+FD F-COMPTES.
+COPY CPTREC.
+FD F-REJETS.
+01 ENR-REJET.
+   05 REJ-TRN       PIC X(20).
+   05 REJ-SEP       PIC X.
+   05 REJ-MOTIF     PIC X(25).
+
+WORKING-STORAGE SECTION.
+01 WS-FS-TRN        PIC XX.
+   88 TRN-OK               VALUE "00".
+   88 TRN-FIN              VALUE "10".
+01 WS-FS-CPT        PIC XX.
+   88 CPT-OK               VALUE "00".
+01 WS-FS-REJ        PIC XX.
+   88 REJ-OK               VALUE "00".
+01 WS-MOTIF         PIC X(25).
+01 WS-REJET         PIC X VALUE "N".
+   88 REJET-OUI            VALUE "O".
+   88 REJET-NON            VALUE "N".
+01 WS-SOLDE-SRC     PIC 9(7)V99.
+01 WS-NB-LUES       PIC 999 VALUE 0.
+01 WS-NB-DEPOTS     PIC 999 VALUE 0.
+01 WS-NB-RETRAITS   PIC 999 VALUE 0.
+01 WS-NB-VIREMENTS  PIC 999 VALUE 0.
+01 WS-NB-REJETS     PIC 999 VALUE 0.
+01 WS-TOT-DEPOTS    PIC 9(9)V99 VALUE 0.
+01 WS-TOT-RETRAITS  PIC 9(9)V99 VALUE 0.
+01 WS-TOT-VIREMENTS PIC 9(9)V99 VALUE 0.
+01 WS-ED-MONTANT    PIC Z,ZZZ,ZZZ,ZZ9.99.
+
+PROCEDURE DIVISION.
+0000-PRINCIPAL.
+    PERFORM 1000-OUVRIR
+    PERFORM 2000-LIRE-TRN
+    PERFORM UNTIL TRN-FIN
+        ADD 1 TO WS-NB-LUES
+        PERFORM 3000-TRAITER-TRANSACTION
+        PERFORM 2000-LIRE-TRN
+    END-PERFORM
+    PERFORM 9000-TERMINER
+    STOP RUN.
+
+1000-OUVRIR.
+    OPEN INPUT F-TRN
+    IF NOT TRN-OK
+        DISPLAY "ERREUR ouverture transactions, statut " WS-FS-TRN
+        STOP RUN
+    END-IF
+    OPEN I-O F-COMPTES
+    IF NOT CPT-OK
+        DISPLAY "ERREUR ouverture comptes, statut " WS-FS-CPT
+        DISPLAY "(avez-vous lance charge.cob ?)"
+        STOP RUN
+    END-IF
+    OPEN OUTPUT F-REJETS
+    IF NOT REJ-OK
+        DISPLAY "ERREUR creation rejets, statut " WS-FS-REJ
+        STOP RUN
+    END-IF.
+
+2000-LIRE-TRN.
+    READ F-TRN
+        AT END CONTINUE
+    END-READ.
+
+3000-TRAITER-TRANSACTION.
+    SET REJET-NON TO TRUE
+    IF NOT TRN-TYPE-OK
+        MOVE "TYPE INVALIDE" TO WS-MOTIF
+        SET REJET-OUI TO TRUE
+    ELSE
+        IF TRN-MONTANT = 0
+            MOVE "MONTANT NUL" TO WS-MOTIF
+            SET REJET-OUI TO TRUE
+        ELSE
+            PERFORM 3100-LIRE-COMPTE
+            IF REJET-NON
+                EVALUATE TRUE
+                    WHEN TRN-DEPOT
+                        PERFORM 3200-DEPOT
+                    WHEN TRN-RETRAIT
+                        PERFORM 3300-RETRAIT
+                    WHEN TRN-VIREMENT
+                        PERFORM 3400-VIREMENT
+                END-EVALUATE
+            END-IF
+        END-IF
+    END-IF
+    IF REJET-OUI
+        PERFORM 8000-ECRIRE-REJET
+    END-IF.
+
+3100-LIRE-COMPTE.
+    MOVE TRN-COMPTE TO CPT-NUM
+    READ F-COMPTES
+        INVALID KEY
+            MOVE "COMPTE INCONNU" TO WS-MOTIF
+            SET REJET-OUI TO TRUE
+    END-READ.
+
+3200-DEPOT.
+    ADD TRN-MONTANT TO CPT-SOLDE
+        ON SIZE ERROR
+            MOVE "DEPASSEMENT CAPACITE" TO WS-MOTIF
+            SET REJET-OUI TO TRUE
+        NOT ON SIZE ERROR
+            REWRITE CPT-REC
+            ADD 1 TO WS-NB-DEPOTS
+            ADD TRN-MONTANT TO WS-TOT-DEPOTS
+    END-ADD.
+
+3300-RETRAIT.
+    EVALUATE TRUE
+        WHEN TRN-MONTANT > 1000
+            MOVE "PLAFOND DEPASSE" TO WS-MOTIF
+            SET REJET-OUI TO TRUE
+        WHEN CPT-SOLDE < TRN-MONTANT
+            MOVE "SOLDE INSUFFISANT" TO WS-MOTIF
+            SET REJET-OUI TO TRUE
+        WHEN OTHER
+            SUBTRACT TRN-MONTANT FROM CPT-SOLDE
+            REWRITE CPT-REC
+            ADD 1 TO WS-NB-RETRAITS
+            ADD TRN-MONTANT TO WS-TOT-RETRAITS
+    END-EVALUATE.
+
+3400-VIREMENT.
+    *> Ici CPT-REC contient le compte SOURCE (lu en 3100)
+    IF TRN-DEST = TRN-COMPTE
+        MOVE "VIREMENT VERS SOI-MEME" TO WS-MOTIF
+        SET REJET-OUI TO TRUE
+    ELSE
+        MOVE CPT-SOLDE TO WS-SOLDE-SRC
+        MOVE TRN-DEST TO CPT-NUM
+        READ F-COMPTES
+            INVALID KEY
+                MOVE "COMPTE DEST INCONNU" TO WS-MOTIF
+                SET REJET-OUI TO TRUE
+            NOT INVALID KEY
+                PERFORM 3410-VIREMENT-DEST-OK
+        END-READ
+    END-IF.
+
+3410-VIREMENT-DEST-OK.
+    *> Ici CPT-REC contient le compte DESTINATAIRE
+    IF WS-SOLDE-SRC < TRN-MONTANT
+        MOVE "SOLDE INSUFFISANT" TO WS-MOTIF
+        SET REJET-OUI TO TRUE
+    ELSE
+        ADD TRN-MONTANT TO CPT-SOLDE
+            ON SIZE ERROR
+                MOVE "DEPASSEMENT CAPACITE" TO WS-MOTIF
+                SET REJET-OUI TO TRUE
+            NOT ON SIZE ERROR
+                REWRITE CPT-REC
+                PERFORM 3420-DEBITER-SOURCE
+        END-ADD
+    END-IF.
+
+3420-DEBITER-SOURCE.
+    MOVE TRN-COMPTE TO CPT-NUM
+    READ F-COMPTES
+        INVALID KEY
+            DISPLAY "ERREUR INTERNE : compte source disparu " TRN-COMPTE
+    END-READ
+    SUBTRACT TRN-MONTANT FROM CPT-SOLDE
+    REWRITE CPT-REC
+    ADD 1 TO WS-NB-VIREMENTS
+    ADD TRN-MONTANT TO WS-TOT-VIREMENTS.
+
+8000-ECRIRE-REJET.
+    MOVE SPACES TO ENR-REJET
+    MOVE TRN-REC  TO REJ-TRN
+    MOVE WS-MOTIF TO REJ-MOTIF
+    WRITE ENR-REJET
+    ADD 1 TO WS-NB-REJETS.
+
+9000-TERMINER.
+    CLOSE F-TRN F-COMPTES F-REJETS
+    DISPLAY "-------------------------------------"
+    DISPLAY "Transactions lues  : " WS-NB-LUES
+    DISPLAY "  depots acceptes  : " WS-NB-DEPOTS
+    DISPLAY "  retraits acceptes: " WS-NB-RETRAITS
+    DISPLAY "  virements        : " WS-NB-VIREMENTS
+    DISPLAY "Rejetees           : " WS-NB-REJETS
+    MOVE WS-TOT-DEPOTS TO WS-ED-MONTANT
+    DISPLAY "Total depots       : " WS-ED-MONTANT
+    MOVE WS-TOT-RETRAITS TO WS-ED-MONTANT
+    DISPLAY "Total retraits     : " WS-ED-MONTANT
+    MOVE WS-TOT-VIREMENTS TO WS-ED-MONTANT
+    DISPLAY "Total virements    : " WS-ED-MONTANT
+    DISPLAY "Detail des rejets  : out/rejets.txt".

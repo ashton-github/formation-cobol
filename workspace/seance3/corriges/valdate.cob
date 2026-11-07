@@ -1,0 +1,54 @@
+*> Corrigé TP3.3 : sous-programme de validation de date
+IDENTIFICATION DIVISION.
+PROGRAM-ID. VALDATE.
+
+DATA DIVISION.
+WORKING-STORAGE SECTION.
+01 WS-JOURS-MAX    PIC 99.
+01 WS-BISSEXTILE   PIC X VALUE "N".
+   88 EST-BISSEXTILE     VALUE "O".
+
+LINKAGE SECTION.
+01 LK-DATE.
+   05 LK-JJ        PIC 99.
+   05 LK-MM        PIC 99.
+   05 LK-AAAA      PIC 9(4).
+01 LK-CODE         PIC 9.
+   88 DATE-OK            VALUE 0.
+   88 DATE-KO            VALUE 1.
+
+PROCEDURE DIVISION USING LK-DATE LK-CODE.
+0000-PRINCIPAL.
+    SET DATE-KO TO TRUE
+    IF LK-DATE IS NUMERIC
+       AND LK-MM >= 1 AND LK-MM <= 12
+       AND LK-AAAA >= 1583
+        PERFORM 1000-BISSEXTILE
+        EVALUATE LK-MM
+            WHEN 4
+            WHEN 6
+            WHEN 9
+            WHEN 11
+                MOVE 30 TO WS-JOURS-MAX
+            WHEN 2
+                IF EST-BISSEXTILE
+                    MOVE 29 TO WS-JOURS-MAX
+                ELSE
+                    MOVE 28 TO WS-JOURS-MAX
+                END-IF
+            WHEN OTHER
+                MOVE 31 TO WS-JOURS-MAX
+        END-EVALUATE
+        IF LK-JJ >= 1 AND LK-JJ <= WS-JOURS-MAX
+            SET DATE-OK TO TRUE
+        END-IF
+    END-IF
+    GOBACK.
+
+1000-BISSEXTILE.
+    MOVE "N" TO WS-BISSEXTILE
+    IF FUNCTION MOD(LK-AAAA, 400) = 0
+       OR (FUNCTION MOD(LK-AAAA, 4) = 0
+           AND FUNCTION MOD(LK-AAAA, 100) NOT = 0)
+        SET EST-BISSEXTILE TO TRUE
+    END-IF.

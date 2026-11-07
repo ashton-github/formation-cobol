@@ -1,0 +1,23 @@
+Extraits illustratifs (NON compilables ici) : COBOL dans l'écosystème mainframe.
+
+--- SQL embarqué (DB2) -------------------------------------------
+       WORKING-STORAGE SECTION.
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+       01  WS-NUM-CLIENT   PIC S9(9) COMP.
+       01  WS-NOM-CLIENT   PIC X(30).
+       PROCEDURE DIVISION.
+           MOVE 42 TO WS-NUM-CLIENT
+           EXEC SQL
+               SELECT NOM INTO :WS-NOM-CLIENT
+                 FROM CLIENT
+                WHERE NUM = :WS-NUM-CLIENT
+           END-EXEC
+           IF SQLCODE = 0
+               DISPLAY "Client : " WS-NOM-CLIENT
+           END-IF.
+
+--- Transaction en ligne (CICS) ----------------------------------
+           EXEC CICS SEND MAP('MAPCLI') MAPSET('MAPSET1')
+                     ERASE
+           END-EXEC.
+           EXEC CICS RETURN TRANSID('CLI1') END-EXEC.

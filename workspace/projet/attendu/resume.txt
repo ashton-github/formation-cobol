@@ -1,0 +1,35 @@
+CHARGEMENT (charge.cob)
+  Lignes lues      : 15
+  Comptes charges  : 13
+  Rejetes          : 2
+
+TRAITEMENT (traite.cob)
+  Transactions lues      : 22
+  Acceptees              : 11
+    dont depots          : 4
+    dont retraits        : 5
+    dont virements       : 2
+  Rejetees               : 11
+  Total depots acceptes  : 504.75
+  Total retraits acceptes: 4039.99
+  Total virements        : 700.00
+
+EDITION (edition.cob)
+  Type C : 8 comptes, sous-total 3470.30
+  Type E : 5 comptes, sous-total 10041775.01
+  Total general : 10045245.31
+
+SOLDES FINAUX
+  100001 DUPONT     C       950.00
+  100002 MARTIN     E     11576.00
+  100003 BERNARD    C         0.00
+  100004 PETIT      C       100.00
+  100005 ROBERT     E      5400.00
+  100006 RICHARD    C       580.20
+  100007 DURAND     E     24000.01
+  100008 DUBOIS     C        90.10
+  100009 MOREAU     C      1600.00
+  100010 LAURENT    E       800.00
+  100011 SIMON      C       150.00
+  100012 MICHEL     E   9999999.00
+  100014 GARCIA     C         0.00

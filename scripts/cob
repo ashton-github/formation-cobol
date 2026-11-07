@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# cob : compile (GnuCOBOL) puis exécute un programme COBOL.
+#
+# Usage :
+#   cob [options] programme.cob [sous-programme1.cob ...]
+#
+# Options :
+#   -c   compiler seulement (ne pas exécuter)
+#   -f   source au format FIXE (colonnes 7-72) ; par défaut : format LIBRE
+#   -d   mode débogage (contrôles à l'exécution : indices, limites, etc.)
+#   -h   aide
+#
+# Le premier fichier est le programme principal ; les suivants sont des
+# sous-programmes liés statiquement. Les copybooks (COPY) sont cherchés dans le
+# dossier du programme et dans ../copy.
+
+FORMAT="-free"; RUN=1; DEBUG=""
+
+usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; }
+
+if ! command -v cobc >/dev/null 2>&1; then
+  echo "GnuCOBOL (cobc) n'est pas installé. Voir README.md, section 2." >&2
+  exit 1
+fi
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -c) RUN=0; shift ;;
+    -f) FORMAT="-fixed"; shift ;;
+    -d) DEBUG="-debug -g"; shift ;;
+    -h|--help) usage; exit 0 ;;
+    -*) echo "Option inconnue : $1" >&2; usage; exit 1 ;;
+    *) break ;;
+  esac
+done
+
+if [ $# -lt 1 ]; then usage; exit 1; fi
+
+MAIN="$1"
+if [ ! -f "$MAIN" ]; then echo "Fichier introuvable : $MAIN" >&2; exit 1; fi
+
+BUILD="${TMPDIR:-/tmp}/cob-build"
+mkdir -p "$BUILD"
+OUT="$BUILD/$(basename "${MAIN%.*}")"
+DIR="$(dirname "$MAIN")"
+
+echo ">> Compilation : cobc -x $FORMAT $DEBUG $*"
+cobc -x $FORMAT $DEBUG -W -I "$DIR" -I "$DIR/../copy" -o "$OUT" "$@" || { echo ">> ECHEC de la compilation" >&2; exit 1; }
+echo ">> OK - execution :"
+echo "-----------------------------------------------"
+if [ "$RUN" -eq 1 ]; then "$OUT"; RC=$?; echo "-----------------------------------------------"; echo ">> Fin du programme (code retour $RC)"; exit $RC; fi

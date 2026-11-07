@@ -1,0 +1,85 @@
+*> ---------------------------------------------------------------
+*> Exemple 4.7 : RUPTURE DE CONTRÔLE (sous-total par région)
+*> Principe : fichier trié sur la clé de rupture ; on cumule tant que la
+*> clé ne change pas ; au changement de clé (ou fin de fichier) on édite
+*> le sous-total.
+*> ---------------------------------------------------------------
+IDENTIFICATION DIVISION.
+PROGRAM-ID. RUPTURE.
+
+ENVIRONMENT DIVISION.
+INPUT-OUTPUT SECTION.
+FILE-CONTROL.
+    SELECT F-VENTES ASSIGN TO "seance4/data/ventes.dat"
+        ORGANIZATION IS LINE SEQUENTIAL.
+    SELECT F-TRIE   ASSIGN TO "seance4/out/ventes_tri.dat"
+        ORGANIZATION IS LINE SEQUENTIAL
+        FILE STATUS IS WS-FS.
+    SELECT F-TRI    ASSIGN TO "sortwork".
+
+DATA DIVISION.
+FILE SECTION.
+FD F-VENTES.
+01 ENR-VENTE        PIC X(27).
+FD F-TRIE.
+01 ENR-TRIE.
+   05 V-REGION      PIC X(10).
+   05 V-VENDEUR     PIC X(10).
+   05 V-MONTANT     PIC 9(5)V99.
+SD F-TRI.
+01 ENR-TRI.
+   05 T-REGION      PIC X(10).
+   05 T-VENDEUR     PIC X(10).
+   05 T-MONTANT     PIC 9(5)V99.
+
+WORKING-STORAGE SECTION.
+01 WS-FS               PIC XX.
+   88 FS-FIN                  VALUE "10".
+01 WS-REGION-COURANTE  PIC X(10).
+01 WS-TOTAL-REGION     PIC 9(7)V99 VALUE 0.
+01 WS-NB-REGION        PIC 99      VALUE 0.
+01 WS-TOTAL-GENERAL    PIC 9(8)V99 VALUE 0.
+01 WS-ED-MONTANT       PIC Z,ZZZ,ZZ9.99.
+
+PROCEDURE DIVISION.
+0000-PRINCIPAL.
+    SORT F-TRI
+        ON ASCENDING KEY T-REGION T-VENDEUR
+        USING F-VENTES
+        GIVING F-TRIE
+
+    OPEN INPUT F-TRIE
+    DISPLAY "REGION     VENDEUR        MONTANT"
+    PERFORM 1000-LIRE
+    PERFORM UNTIL FS-FIN
+        MOVE V-REGION TO WS-REGION-COURANTE
+        MOVE 0 TO WS-TOTAL-REGION WS-NB-REGION
+        PERFORM UNTIL FS-FIN OR V-REGION NOT = WS-REGION-COURANTE
+            PERFORM 2000-DETAIL
+            PERFORM 1000-LIRE
+        END-PERFORM
+        PERFORM 3000-SOUS-TOTAL
+    END-PERFORM
+    CLOSE F-TRIE
+
+    MOVE WS-TOTAL-GENERAL TO WS-ED-MONTANT
+    DISPLAY "=============================================="
+    DISPLAY "TOTAL GENERAL                   " WS-ED-MONTANT
+    STOP RUN.
+
+1000-LIRE.
+    READ F-TRIE
+        AT END CONTINUE
+    END-READ.
+
+2000-DETAIL.
+    MOVE V-MONTANT TO WS-ED-MONTANT
+    DISPLAY V-REGION " " V-VENDEUR " " WS-ED-MONTANT
+    ADD V-MONTANT TO WS-TOTAL-REGION WS-TOTAL-GENERAL
+    ADD 1 TO WS-NB-REGION.
+
+3000-SOUS-TOTAL.
+    MOVE WS-TOTAL-REGION TO WS-ED-MONTANT
+    DISPLAY "  Sous-total " WS-REGION-COURANTE " (" WS-NB-REGION " ventes) "
+            WS-ED-MONTANT
+    DISPLAY " ".
